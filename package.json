@@ -1,0 +1,46 @@
+{
+  "name": "bot-wa-1",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "WhatsApp bot for stickers and TikTok/Instagram downloads",
+  "engines": {
+    "node": ">=20 <25"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "smoke:native": "node scripts/smoke-native.mjs",
+    "preview:sticker": "tsx scripts/preview-sticker.ts"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^1.0.13",
+    "@napi-rs/image": "^1.15.0",
+    "baileys": "6.7.24",
+    "dotenv": "^18.0.8",
+    "file-type": "^22.2.0",
+    "p-queue": "^10.0.0",
+    "pino": "^10.4.0",
+    "qrcode-terminal": "^0.12.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.5",
+    "@types/qrcode-terminal": "^0.12.2",
+    "eslint": "^10.13.0",
+    "globals": "^17.13.0",
+    "pino-pretty": "^13.2.0",
+    "prettier": "^3.9.10",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.0",
+    "vitest": "^5.0.5"
+  }
+}
