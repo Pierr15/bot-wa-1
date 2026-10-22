@@ -246,25 +246,35 @@ npm run build
 node dist/index.js
 ```
 
-**Boot script** `~/.termux/boot/start-services`:
+**Boot script** `~/.termux/boot/start-wa-bot`:
 
 ```sh
 #!/data/data/com.termux/files/usr/bin/sh
-termux-wake-lock
-. $PREFIX/etc/profile.d/start-services.sh
+/data/data/com.termux/files/usr/bin/termux-wake-lock 2>/dev/null || true
+. /data/data/com.termux/files/usr/etc/profile.d/start-services.sh
 ```
 
-**Service** `$PREFIX/var/service/wa-bot/run`:
-
-```sh
-#!/data/data/com.termux/files/usr/bin/sh
-export PATH=/data/data/com.termux/files/usr/bin:$PATH
-exec 2>&1
-cd $HOME/bot-wa-1
-exec node dist/index.js
-```
+**Service** (otomatis):
 
 ```bash
+cd ~/bot-wa-1
+bash scripts/termux/install-service.sh
+```
+
+Script tersebut membuat `$PREFIX/var/service/wa-bot/run`, log service, dan boot script.
+Perintah manual yang setara:
+
+```bash
+mkdir -p $PREFIX/var/service/wa-bot
+cat > $PREFIX/var/service/wa-bot/run <<'SH'
+#!/data/data/com.termux/files/usr/bin/sh
+export PATH=/data/data/com.termux/files/usr/bin:$PATH
+export NODE_ENV=production
+export TZ=Asia/Jakarta
+cd $HOME/bot-wa-1
+exec 2>&1
+exec node dist/index.js
+SH
 chmod +x $PREFIX/var/service/wa-bot/run
 sv-enable wa-bot
 sv up wa-bot

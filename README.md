@@ -9,7 +9,7 @@ Bot privat untuk WhatsApp yang berjalan di Termux (Android). Fase 1 mendukung:
 
 ## Kebutuhan
 
-- Node.js 22 LTS
+- Node.js 22/24 LTS
 - `yt-dlp`, `ffmpeg`, dan `ffprobe`
 - Termux dari F-Droid dengan arsitektur `aarch64`
 - Nomor WhatsApp khusus bot (disarankan), ditautkan sebagai perangkat tertaut
@@ -88,6 +88,28 @@ Instagram menampilkan login wall.
 - Batas: TikTok 3 download/5 menit/user, Instagram 2 download/10 menit/user,
   maksimal 10 media per post, antrean download serial.
 - Download ditolak jika sisa penyimpanan di bawah `MIN_FREE_DISK_MB`.
+
+## Service 24/7 di Termux
+
+Setelah `.env` diisi, build selesai, dan login WhatsApp berhasil:
+
+```bash
+cd ~/bot-wa-1
+bash scripts/termux/install-service.sh
+```
+
+Script memasang service `wa-bot`, log, dan boot script Termux:Boot. Perintah operasional:
+
+```bash
+sv status wa-bot
+sv restart wa-bot
+sv down wa-bot
+tail -f ~/.local/share/wa-bot/log/current
+```
+
+Jika `sv up` gagal karena daemon service belum berjalan, tutup-buka Termux lalu jalankan
+`sv up wa-bot`. Pastikan Termux:Boot sudah dibuka sekali dan optimasi baterai Termux
+dimatikan.
 
 ## Pengembangan
 
