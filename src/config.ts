@@ -47,6 +47,7 @@ const envSchema = z.object({
   DOWNLOAD_MAX_DURATION_SEC: number(300, 30, 1_800),
   DOWNLOAD_CONCURRENCY: number(1, 1, 4),
   DOWNLOAD_TIMEOUT_MS: number(90_000, 10_000, 300_000),
+  MIN_FREE_DISK_MB: number(1024, 100, 100_000),
   MAX_QUEUE: number(20, 1, 200),
   YTDLP_PATH: z.string().min(1).default('yt-dlp'),
   FFMPEG_PATH: z.string().min(1).default('ffmpeg'),
@@ -82,6 +83,7 @@ export interface AppConfig {
     maxDurationSec: number;
     concurrency: number;
     timeoutMs: number;
+    minFreeDiskBytes: number;
     maxQueue: number;
     ytdlpPath: string;
     ffmpegPath: string;
@@ -165,6 +167,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       maxDurationSec: raw.DOWNLOAD_MAX_DURATION_SEC,
       concurrency: raw.DOWNLOAD_CONCURRENCY,
       timeoutMs: raw.DOWNLOAD_TIMEOUT_MS,
+      minFreeDiskBytes: raw.MIN_FREE_DISK_MB * 1024 * 1024,
       maxQueue: raw.MAX_QUEUE,
       ytdlpPath: raw.YTDLP_PATH,
       ffmpegPath: raw.FFMPEG_PATH,

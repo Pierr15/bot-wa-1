@@ -1,4 +1,4 @@
-import { mkdir, readdir, rm, stat } from 'node:fs/promises';
+import { mkdir, readdir, rm, stat, statfs } from 'node:fs/promises';
 import path from 'node:path';
 import type { AppConfig } from '../config.js';
 import type { AppLogger } from './logger.js';
@@ -10,6 +10,20 @@ export async function ensureDirectories(config: AppConfig): Promise<void> {
     mkdir(config.paths.tmpDir, { recursive: true }),
     mkdir(config.paths.cookiesDir, { recursive: true }),
   ]);
+}
+
+/**
+ * Returns null when the filesystem cannot be inspected, so callers can choose
+ * to proceed instead of blocking downloads on platforms without statfs.
+ */
+export async function getFreeDiskBytes(dir: string): Promise<number | null> {
+  try {
+    const info = await statfs(dir);
+    const free = info.bavail * info.bsize;
+    return Number.isFinite(free) ? free : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function cleanupTempFiles(tmpDir: string, maxAgeMs: number): Promise<number> {

@@ -1,6 +1,6 @@
 # TODO — Bot WhatsApp Fase 1
 
-**Status:** M0–M4 sudah diimplementasikan (kode); acceptance perangkat/Termux dan uji link nyata belum  
+**Status:** M0–M4 sudah diimplementasikan (kode); acceptance perangkat/Termux dan uji link nyata belum dijalankan.
 **Target runtime:** HP Android cadangan → Termux (arm64)  
 **Lingkungan development:** Windows, `D:\Project\bot-wa-1`  
 **Nomor WhatsApp:** nomor baru (bot), terpisah dari nomor pribadi  
@@ -78,7 +78,8 @@ Wajib lulus semua. Jika gagal, selesaikan dulu sebelum lanjut.
   - [x] abaikan nomor asing tanpa balasan.
 - [x] **M0.10** Command `/menu`, `/help`, `/ping`.
 - [x] **M0.11** Script `scripts/smoke-native.mjs` untuk gate native module.
-- [ ] **M0.12** Commit pertama + tes restart session.
+- [x] **M0.12a** Commit pertama.
+- [ ] **M0.12b** Tes restart session di perangkat.
 
 **Acceptance M0:** bot online, `ping` → `pong`, hanya nomor whitelist yang dilayani, restart tidak perlu scan ulang.
 
@@ -86,21 +87,21 @@ Wajib lulus semua. Jika gagal, selesaikan dulu sebelum lanjut.
 
 ## M1 — Stiker dasar dari foto
 
-- [ ] **M1.1** Terima gambar dari chat dan reply-to-image; unduh media Baileys.
-- [ ] **M1.2** Validasi input:
-  - [ ] tipe JPEG/PNG/WebP;
-  - [ ] maksimal 10 MB;
-  - [ ] batas piksel untuk mencegah decompression bomb.
-- [ ] **M1.3** Pipeline gambar:
-  - [ ] rotate sesuai EXIF;
-  - [ ] crop tengah ke 512×512;
-  - [ ] encode WebP dengan quality loop 82 → 70 → 58 → 46 → 34;
-  - [ ] berhenti saat ≤100 KB.
-- [ ] **M1.4** Kirim sticker Baileys + reaksi ⏳/✅.
-- [ ] **M1.5** Fallback jika masih >100 KB: turunkan quality minimum, lalu blur tipis; log warning.
-- [ ] **M1.6** Cleanup `data/tmp` setelah kirim; retry untuk file lock Android.
+- [x] **M1.1** Terima gambar dari chat dan reply-to-image; unduh media Baileys.
+- [x] **M1.2** Validasi input:
+  - [x] tipe JPEG/PNG/WebP;
+  - [x] maksimal 10 MB;
+  - [x] batas piksel untuk mencegah decompression bomb.
+- [x] **M1.3** Pipeline gambar:
+  - [x] rotate sesuai EXIF;
+  - [x] crop tengah ke 512×512;
+  - [x] encode WebP dengan quality loop 82 → 72 → 62 → 52 → 42 → 32 → 24 → 12;
+  - [x] berhenti saat ≤100 KB.
+- [x] **M1.4** Kirim sticker Baileys + reaksi ⏳/✅.
+- [x] **M1.5** Fallback jika masih >100 KB: turunkan quality minimum, lalu blur tipis; log warning.
+- [x] **M1.6** Cleanup `data/tmp` setelah kirim; retry untuk file lock Android.
 - [ ] **M1.7** Fixture test: portrait, landscape, PNG alpha, JPEG besar, WebP, gambar 12 MP.
-- [ ] **M1.8** Unit test: dimensi output tepat 512×512, ukuran ≤100 KB, magic bytes WebP.
+- [x] **M1.8** Unit test: dimensi output tepat 512×512, ukuran ≤100 KB, magic bytes WebP.
 - [ ] **M1.9** Tes manual di WhatsApp Android; jika ada, tes juga iOS.
 
 **Acceptance M1:** 10 variasi foto menghasilkan stiker valid, tampil benar, dan tidak meninggalkan file temp.
@@ -109,28 +110,28 @@ Wajib lulus semua. Jika gagal, selesaikan dulu sebelum lanjut.
 
 ## M2 — Teks stiker gaya Indonesia
 
-- [ ] **M2.1** Bundle font **Anton** (OFL) di `assets/fonts`; register ke canvas.
-- [ ] **M2.2** Renderer teks:
-  - [ ] uppercase;
-  - [ ] word-wrap maksimal 3 baris;
-  - [ ] auto font size;
-  - [ ] putih + outline hitam 8–12 px;
-  - [ ] shadow tipis;
-  - [ ] margin 28 px, lebar maksimal 448 px.
-- [ ] **M2.3** Posisi: `atas`, `bawah` (default), `tengah`.
-- [ ] **M2.4** Dua zona: `atas: TEKS 1 | bawah: TEKS 2`.
-- [ ] **M2.5** Parser caption:
-  - [ ] tanpa prefix → bawah;
-  - [ ] prefix `atas:` / `bawah:` / `tengah:`;
-  - [ ] batas 140 karakter.
-- [ ] **M2.6** State "menunggu teks":
-  - [ ] foto tanpa caption → bot minta teks;
-  - [ ] TTL 5 menit;
-  - [ ] `/skip` → tanpa teks;
-  - [ ] reply foto + teks → langsung render.
+- [x] **M2.1** Bundle font **Anton** (OFL) di `assets/fonts`; register ke canvas.
+- [x] **M2.2** Renderer teks:
+  - [x] uppercase;
+  - [x] word-wrap maksimal 3 baris;
+  - [x] auto font size;
+  - [x] putih + outline hitam 8–12 px;
+  - [x] shadow tipis;
+  - [x] margin 28 px, lebar maksimal 448 px.
+- [x] **M2.3** Posisi: `atas`, `bawah` (default), `tengah`.
+- [x] **M2.4** Dua zona: `atas: TEKS 1 | bawah: TEKS 2`.
+- [x] **M2.5** Parser caption:
+  - [x] tanpa prefix → bawah;
+  - [x] prefix `atas:` / `bawah:` / `tengah:`;
+  - [x] batas 140 karakter.
+- [x] **M2.6** State "menunggu teks":
+  - [x] foto tanpa caption → bot minta teks;
+  - [x] TTL 5 menit;
+  - [x] `/skip` → tanpa teks;
+  - [x] reply foto + teks → langsung render.
 - [ ] **M2.7** Emoji: register Noto Color Emoji jika tersedia; jika tidak, strip emoji + beri info.
 - [ ] **M2.8** Golden test layout: teks pendek, panjang, 2 zona, karakter aneh.
-- [ ] **M2.9** Pastikan hasil akhir tetap ≤100 KB setelah overlay.
+- [x] **M2.9** Pastikan hasil akhir tetap ≤100 KB setelah overlay.
 - [ ] **M2.10** Tes manual: teks terbaca di background terang/gelap dan tidak terpotong.
 
 **Acceptance M2:** pengguna bisa mengirim foto + teks dan mendapat stiker meme Indonesia yang rapi; semua posisi bekerja.
@@ -139,25 +140,25 @@ Wajib lulus semua. Jika gagal, selesaikan dulu sebelum lanjut.
 
 ## M3 — Downloader TikTok
 
-- [ ] **M3.1** Deteksi URL + allowlist domain (`tiktok.com`, `vm.tiktok.com`, `vt.tiktok.com`).
-- [ ] **M3.2** Resolve short link dengan validasi domain; blokir IP/localhost/port aneh (SSRF guard).
-- [ ] **M3.3** Wrapper `yt-dlp`:
-  - [ ] spawn tanpa shell;
-  - [ ] timeout 90 detik;
-  - [ ] batas ukuran dan durasi;
-  - [ ] path output unik di `data/tmp`.
+- [x] **M3.1** Deteksi URL + allowlist domain (`tiktok.com`, `vm.tiktok.com`, `vt.tiktok.com`).
+- [x] **M3.2** Resolve short link dengan validasi domain; blokir IP/localhost/port aneh (SSRF guard).
+- [x] **M3.3** Wrapper `yt-dlp`:
+  - [x] spawn tanpa shell;
+  - [x] timeout 90 detik;
+  - [x] batas ukuran dan durasi;
+  - [x] path output unik di `data/tmp`.
 - [ ] **M3.4** Verifikasi format no-watermark pada 10 link nyata; jika watermark muncul, uji selector alternatif.
-- [ ] **M3.5** Fallback TikTok: TikWM (bisa dimatikan via env; catat implikasi privasi).
-- [ ] **M3.6** Kirim video:
-  - [ ] ≤16 MB → kirim langsung;
-  - [ ] >16 MB → ffmpeg 720p H.264/AAC;
-  - [ ] masih >16 MB → 480p;
-  - [ ] masih >16 MB → dokumen.
-- [ ] **M3.7** TikTok slideshow: kirim gambar berurutan (maks 10) + audio jika tersedia.
+- [x] **M3.5** Fallback TikTok: TikWM (bisa dimatikan via env; catat implikasi privasi).
+- [x] **M3.6** Kirim video:
+  - [x] ≤16 MB → kirim langsung;
+  - [x] >16 MB → ffmpeg 720p H.264/AAC;
+  - [x] masih >16 MB → 480p;
+  - [x] masih >16 MB → dokumen.
+- [x] **M3.7** TikTok slideshow: kirim gambar berurutan (maks 10) + audio jika tersedia.
 - [ ] **M3.8** Queue: 1 download + 1 transcode bersamaan; serial per user.
-- [ ] **M3.9** Rate limit: 3 download / 5 menit / user.
-- [ ] **M3.10** Pesan error Indonesia: link private, dihapus, timeout, terlalu besar.
-- [ ] **M3.11** Cleanup setelah kirim, termasuk file hasil transcode.
+- [x] **M3.9** Rate limit: 3 download / 5 menit / user.
+- [x] **M3.10** Pesan error Indonesia: link private, dihapus, timeout, terlalu besar.
+- [x] **M3.11** Cleanup setelah kirim, termasuk file hasil transcode.
 
 **Acceptance M3:** 10 link TikTok (video, short link, slideshow) berhasil; tidak ada watermark; video playable di WhatsApp.
 
@@ -165,14 +166,14 @@ Wajib lulus semua. Jika gagal, selesaikan dulu sebelum lanjut.
 
 ## M4 — Downloader Instagram
 
-- [ ] **M4.1** Allowlist `instagram.com`; dukung `/p/`, `/reel/`, `/reels/`, `/tv/`.
-- [ ] **M4.2** Dukungan cookies Netscape di `data/cookies/instagram.txt`.
-- [ ] **M4.3** Wrapper yt-dlp dengan `--cookies`; tanpa `--cookies-from-browser` (tidak ada browser di Termux).
+- [x] **M4.1** Allowlist `instagram.com`; dukung `/p/`, `/reel/`, `/reels/`, `/tv/`.
+- [x] **M4.2** Dukungan cookies Netscape di `data/cookies/instagram.txt`.
+- [x] **M4.3** Wrapper yt-dlp dengan `--cookies`; tanpa `--cookies-from-browser` (tidak ada browser di Termux).
 - [ ] **M4.4** Fallback `gallery-dl` untuk carousel/foto (opsional, hanya jika diperlukan).
-- [ ] **M4.5** Output: reel/video, foto tunggal, carousel maksimal 10 media, jeda 1 detik antar-media.
+- [x] **M4.5** Output: reel/video, foto tunggal, carousel maksimal 10 media, jeda 1 detik antar-media.
 - [ ] **M4.6** Deteksi cookies kedaluwarsa/login wall → pesan jelas ke user + notifikasi owner.
-- [ ] **M4.7** Rate limit lebih ketat: 2 download / 10 menit / user.
-- [ ] **M4.8** Dokumentasi cara export cookies dan risiko akun.
+- [x] **M4.7** Rate limit lebih ketat: 2 download / 10 menit / user.
+- [x] **M4.8** Dokumentasi cara export cookies dan risiko akun.
 - [ ] **M4.9** Tes dengan 5 URL publik dan 5 URL yang butuh cookies.
 
 **Acceptance M4:** Reel, foto, dan carousel berhasil; error cookies/private ditangani tanpa crash.
@@ -181,8 +182,8 @@ Wajib lulus semua. Jika gagal, selesaikan dulu sebelum lanjut.
 
 ## M5 — Hardening, Termux service, dan operasional
 
-- [ ] **M5.1** Rate limiter global + per user; antrean maksimal; tolak dengan pesan "lagi ramai".
-- [ ] **M5.2** Disk guard: tolak download jika sisa disk <1 GB; cleanup otomatis.
+- [x] **M5.1** Rate limiter global + per user; antrean maksimal; tolak dengan pesan "lagi ramai".
+- [x] **M5.2** Disk guard: tolak download jika sisa disk <1 GB; cleanup otomatis.
 - [ ] **M5.3** Log rotation (runit/svlogd) + level log via env.
 - [ ] **M5.4** Health: heartbeat log, `/stats` untuk owner (uptime, queue, disk, sukses/gagal).
 - [ ] **M5.5** Notifikasi error kritis ke owner dengan cooldown agar tidak spam.
@@ -199,7 +200,7 @@ Wajib lulus semua. Jika gagal, selesaikan dulu sebelum lanjut.
 - [ ] **M5.10** Deploy script: `git pull` → `npm ci` → `npm run build` → `sv restart wa-bot`.
 - [ ] **M5.11** Soak test 24 jam: memori, suhu, baterai, reconnect, cleanup.
 - [ ] **M5.12** Test jaringan putus/nyambung; test reboot; test session expired.
-- [ ] **M5.13** README: setup Termux, pairing code, cookies, troubleshooting, limit.
+- [x] **M5.13** README: setup Termux, pairing code, cookies, troubleshooting, limit.
 - [ ] **M5.14** Update yt-dlp bulanan + checklist regresi downloader.
 
 **Acceptance M5:** bot bertahan 24 jam, auto-start setelah reboot, tidak ada kebocoran file, dan owner bisa memantau kondisi bot.

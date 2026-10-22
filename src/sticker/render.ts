@@ -60,7 +60,7 @@ export async function createSticker({
     throw new UserFacingError('Resolusi foto terlalu besar. Coba foto dengan ukuran lebih kecil.');
   }
 
-  let prepared = await new Transformer(input)
+  const base = await new Transformer(input)
     .rotate()
     .resize({
       width: STICKER_SIZE,
@@ -69,11 +69,8 @@ export async function createSticker({
       filter: ResizeFilterType.Lanczos3,
     })
     .png();
-
-  if (text) {
-    const textLayer = await renderTextLayer(text, fontPath);
-    prepared = await new Transformer(prepared).overlay(textLayer, 0, 0).png();
-  }
+  const textLayer = text ? await renderTextLayer(text, fontPath) : null;
+  const prepared = textLayer ? await new Transformer(base).overlay(textLayer, 0, 0).png() : base;
 
   let lastBuffer: Buffer | null = null;
   let lastQuality = 0;
@@ -95,7 +92,36 @@ export async function createSticker({
 
   logger?.warn(
     { bytes: lastBuffer?.length ?? 0, quality: lastQuality },
-    'Stiker melebihi batas 100 KB setelah kompresi maksimal',
+    'Stiker melebihi batas setelah kompresi normal; mencoba blur tipis',
+  );
+
+  // A slight blur on the photo (not the text layer) usually gets noisy
+  // low-light photos under WhatsApp's 100 KB limit without making text fuzzy.
+  for (const sigma of [0.8, 1.4]) {
+    const blurredBase = await new Transformer(base).blur(sigma).png();
+    const blurredPrepared = textLayer
+      ? await new Transformer(blurredBase).overlay(textLayer, 0, 0).png()
+      : blurredBase;
+
+    for (const quality of [40, 28, 18, 10]) {
+      const buffer = await new Transformer(blurredPrepared).webp(quality);
+      lastBuffer = buffer;
+      lastQuality = quality;
+
+      if (buffer.length <= MAX_STICKER_BYTES) {
+        const result = await verifySticker(buffer);
+        logger?.debug(
+          { quality, sigma, bytes: result.bytes, inputBytes: input.length },
+          'Stiker berhasil dibuat setelah blur',
+        );
+        return { buffer, bytes: result.bytes, quality };
+      }
+    }
+  }
+
+  logger?.warn(
+    { bytes: lastBuffer?.length ?? 0, quality: lastQuality },
+    'Stiker melebihi batas 100 KB setelah kompresi maksimal dan blur',
   );
   throw new UserFacingError('Foto terlalu detail untuk dijadikan stiker. Coba foto lain.');
 }

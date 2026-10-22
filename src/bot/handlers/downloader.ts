@@ -7,6 +7,7 @@ import type { AppConfig } from '../../config.js';
 import { DownloadError, UserFacingError, errorMessage } from '../../core/errors.js';
 import type { AppLogger } from '../../core/logger.js';
 import { RateLimiter } from '../../core/rate-limit.js';
+import { getFreeDiskBytes } from '../../core/storage.js';
 import type { DetectedLink } from '../../downloader/detect.js';
 import { Downloader, type DownloadBundle } from '../../downloader/downloader.js';
 import {
@@ -23,7 +24,7 @@ const RATE_LIMITS = {
   instagram: { limit: 2, windowMs: 10 * 60_000 },
 } as const;
 
-const SEND_DELAY_MS = 500;
+const SEND_DELAY_MS = 1_000;
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -73,6 +74,17 @@ export class DownloaderHandler {
         'Aku proses link pertama dulu ya. Kirim satu link per pesan supaya antreannya rapi.',
         message,
       );
+    }
+
+    const freeBytes = await getFreeDiskBytes(this.config.paths.tmpDir);
+
+    if (freeBytes !== null && freeBytes < this.config.download.minFreeDiskBytes) {
+      await this.reply(
+        chatJid,
+        `Penyimpanan HP hampir penuh (sisa ${formatBytes(freeBytes)}). Hapus beberapa file lalu coba lagi.`,
+        message,
+      );
+      return;
     }
 
     if (this.queue.size + this.queue.pending >= this.config.download.maxQueue) {

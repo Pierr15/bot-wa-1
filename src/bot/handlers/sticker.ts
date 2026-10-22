@@ -241,11 +241,15 @@ export class StickerHandler {
         this.config.sticker.maxChars,
       );
     } catch (error) {
-      if (error instanceof UserFacingError) {
-        void this.reply(chatJid, error.message, message);
-      } else {
-        void this.reply(chatJid, 'Teks stiker tidak valid.', message);
-      }
+      const userMessage =
+        error instanceof UserFacingError ? error.message : 'Teks stiker tidak valid.';
+
+      void this.reply(chatJid, userMessage, message).catch((replyError: unknown) => {
+        this.logger.warn(
+          { err: replyError, error: errorMessage(replyError) },
+          'Gagal mengirim pesan kesalahan teks stiker',
+        );
+      });
       return null;
     }
   }

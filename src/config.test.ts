@@ -14,6 +14,7 @@ describe('loadConfig', () => {
     expect(config.paths.cookiesDir).toBe(path.resolve('data/cookies'));
     expect(config.sticker.defaultPosition).toBe('bottom');
     expect(config.download.maxBytes).toBe(16 * 1024 * 1024);
+    expect(config.download.minFreeDiskBytes).toBe(1024 * 1024 * 1024);
     expect(config.download.tikwmFallback).toBe(true);
   });
 

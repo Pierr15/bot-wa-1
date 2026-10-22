@@ -253,7 +253,7 @@ function drawZone(
     ctx.fillText(line, CANVAS_SIZE / 2, y);
     ctx.restore();
 
-    ctx.lineWidth = Math.max(6, layout.fontSize * 0.15);
+    ctx.lineWidth = Math.max(8, Math.min(12, layout.fontSize * 0.15));
     ctx.strokeStyle = '#000000';
     ctx.strokeText(line, CANVAS_SIZE / 2, y);
 
