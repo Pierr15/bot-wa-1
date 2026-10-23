@@ -226,18 +226,35 @@ export class BotConnection {
     if (statusCode === DisconnectReason.loggedOut) {
       this.running = false;
       this.logger.error(
-        'Sesi WhatsApp logout. Hapus data/auth lalu jalankan ulang bot untuk pairing baru.',
+        'Sesi WhatsApp logout/dikeluarkan dari HP. Hapus data/auth lalu jalankan ulang bot untuk login/pairing baru.',
       );
       return;
     }
 
-    if (
-      statusCode === DisconnectReason.forbidden ||
-      statusCode === DisconnectReason.connectionReplaced ||
-      statusCode === DisconnectReason.multideviceMismatch
-    ) {
+    if (statusCode === DisconnectReason.connectionReplaced) {
       this.running = false;
-      this.logger.error({ statusCode }, 'Koneksi dihentikan permanen oleh WhatsApp');
+      this.logger.error(
+        { statusCode },
+        'Sesi WhatsApp dibuka di tempat/proses lain (connection replaced). Pastikan tidak ada bot ganda yang jalan dengan sesi yang sama.',
+      );
+      return;
+    }
+
+    if (statusCode === DisconnectReason.forbidden) {
+      this.running = false;
+      this.logger.error(
+        { statusCode },
+        'Akses ditolak oleh WhatsApp (forbidden / kemungkinan akun diblokir/dibatasi). Periksa status akun di HP.',
+      );
+      return;
+    }
+
+    if (statusCode === DisconnectReason.multideviceMismatch) {
+      this.running = false;
+      this.logger.error(
+        { statusCode },
+        'Data multi-device WhatsApp tidak sinkron. Hapus folder data/auth lalu hubungkan kembali.',
+      );
       return;
     }
 
