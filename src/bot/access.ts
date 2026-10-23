@@ -20,7 +20,7 @@ export type AccessDecision =
 function collectPhoneCandidates(key: WAMessageKey): string[] {
   const candidates = new Set<string>();
 
-  for (const jid of [key.senderPn, key.participantPn, key.participant, key.remoteJid]) {
+  for (const jid of [key.remoteJidAlt, key.participantAlt, key.participant, key.remoteJid]) {
     const phone = phoneFromJid(jid ?? null);
     if (phone) {
       candidates.add(phone);
@@ -55,8 +55,8 @@ export class AccessControl {
       this.logger.info(
         {
           chatSuffix: chatJid.slice(chatJid.indexOf('@')),
-          senderPn: key.senderPn,
-          participantPn: key.participantPn,
+          remoteJidAlt: key.remoteJidAlt,
+          participantAlt: key.participantAlt,
           participant: key.participant,
         },
         'Tidak bisa menentukan nomor pengirim (kemungkinan LID); pesan diabaikan',

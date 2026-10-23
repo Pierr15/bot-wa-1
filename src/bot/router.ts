@@ -180,8 +180,9 @@ export class MessageRouter {
           chatJid,
           [
             `Chat JID: \`${chatJid}\``,
-            `Sender PN: \`${message.key.senderPn ?? '-'}\``,
+            `Sender PN: \`${message.key.remoteJidAlt ?? '-'}\``,
             `Participant: \`${message.key.participant ?? '-'}\``,
+            `Participant Alt: \`${message.key.participantAlt ?? '-'}\``,
           ].join('\n'),
           message,
         );

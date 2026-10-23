@@ -10,7 +10,7 @@ import makeWASocket, {
   type WAMessage,
   type WASocket,
 } from 'baileys';
-import * as qrcode from 'qrcode-terminal';
+import qrcode from 'qrcode-terminal';
 import type { AppConfig } from '../config.js';
 import type { AppLogger } from '../core/logger.js';
 import { TtlSet } from '../core/ttl-set.js';
@@ -102,7 +102,7 @@ export class BotConnection {
         keys: makeCacheableSignalKeyStore(state.keys, this.logger),
       },
       logger: this.logger,
-      browser: Browsers.ubuntu('Chrome'),
+      browser: Browsers.appropriate('Desktop'),
       markOnlineOnConnect: false,
       syncFullHistory: false,
       generateHighQualityLinkPreview: false,
@@ -149,7 +149,6 @@ export class BotConnection {
           this.logger.error({ err: error }, 'Gagal membuat kode pairing');
         });
       }, 3_000);
-      this.pairingTimer.unref();
     }
   }
 
@@ -263,8 +262,6 @@ export class BotConnection {
         this.scheduleReconnect();
       });
     }, delay);
-
-    this.reconnectTimer.unref();
   }
 
   private async handleMessages(messages: WAMessage[]): Promise<void> {
