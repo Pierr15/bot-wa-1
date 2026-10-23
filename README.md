@@ -111,13 +111,20 @@ cd ~/bot-wa-1
 bash scripts/termux/install-service.sh
 ```
 
-Script memasang service `wa-bot`, log, dan boot script Termux:Boot. Perintah operasional:
+Script memasang dua service runit:
+
+- `wa-bot` — proses bot;
+- `wa-bot-updater` — auto-update dari GitHub (cek commit baru tiap 1 menit; jika ada:
+  pull, build, lalu restart `wa-bot` otomatis; perubahan lokal dilewati dengan warning).
+
+Log dan boot script Termux:Boot. Perintah operasional:
 
 ```bash
-sv status wa-bot
-sv restart wa-bot
-sv down wa-bot
+sv status wa-bot wa-bot-updater
+sv restart wa-bot wa-bot-updater
+sv down wa-bot wa-bot-updater
 tail -f ~/.local/share/wa-bot/log/current
+tail -f ~/.local/share/wa-bot-updater/log/current
 ```
 
 Jika `sv up` gagal karena daemon service belum berjalan, tutup-buka Termux lalu jalankan
@@ -158,5 +165,9 @@ Runbook Termux lengkap, termasuk Termux:Boot dan `termux-services`, ada di `TODO
   yt-dlp dengan `pip install -U yt-dlp`. Untuk Instagram, export ulang cookies.
 - **TikTok gagal terus** — coba `ENABLE_TIKWM_FALLBACK=true`; fallback ini mengirim link
   ke TikWM.
+- **Commit baru tidak masuk (auto-update)** — lihat log updater
+  (`tail ~/.local/share/wa-bot-updater/log/current`). Penyebab umum: perubahan lokal
+  pada file ter-track (commit/stash dulu), build gagal (bot tetap jalan dengan kode lama
+  dan update di-retry saat commit berikutnya), atau fetch gagal (cek koneksi/DNS).
 - **QR kedaluwarsa** — jalankan ulang bot. Jangan hapus `data/auth` kecuali sesi sudah
   logout dan ingin pairing ulang.
