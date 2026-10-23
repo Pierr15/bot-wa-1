@@ -12,7 +12,7 @@ import makeWASocket, {
 } from 'baileys';
 import qrcode from 'qrcode-terminal';
 import type { AppConfig } from '../config.js';
-import type { AppLogger } from '../core/logger.js';
+import { createSilentLogger, type AppLogger } from '../core/logger.js';
 import { TtlSet } from '../core/ttl-set.js';
 
 export type MessagesListener = (messages: WAMessage[]) => Promise<void>;
@@ -95,13 +95,15 @@ export class BotConnection {
 
     this.logger.info({ version, isLatest }, 'Menyiapkan koneksi WhatsApp');
 
+    const baileysLogger = this.config.logBaileys ? this.logger : createSilentLogger();
+
     const socket = makeWASocket({
       version,
       auth: {
         creds: state.creds,
-        keys: makeCacheableSignalKeyStore(state.keys, this.logger),
+        keys: makeCacheableSignalKeyStore(state.keys, baileysLogger),
       },
-      logger: this.logger,
+      logger: baileysLogger,
       browser: Browsers.appropriate('Desktop'),
       markOnlineOnConnect: false,
       syncFullHistory: false,

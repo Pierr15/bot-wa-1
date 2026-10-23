@@ -26,3 +26,8 @@ export function createLogger({ level, pretty }: LoggerOptions): AppLogger {
       : {}),
   });
 }
+
+export function createSilentLogger(): AppLogger {
+  return pino({ level: 'silent' });
+}
+

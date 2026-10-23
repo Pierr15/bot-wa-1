@@ -27,6 +27,7 @@ const boolean = (fallback: boolean) =>
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+  LOG_BAILEYS: boolean(false),
   TZ: z.string().default('Asia/Jakarta'),
   BOT_NAME: z.string().min(1).default('WaBot'),
 
@@ -67,6 +68,7 @@ export type StickerPosition = 'top' | 'bottom' | 'center';
 export interface AppConfig {
   nodeEnv: 'development' | 'production' | 'test';
   logLevel: string;
+  logBaileys: boolean;
   timezone: string;
   botName: string;
   loginMode: 'qr' | 'pairing';
@@ -153,6 +155,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   return {
     nodeEnv: raw.NODE_ENV,
     logLevel: raw.LOG_LEVEL,
+    logBaileys: raw.LOG_BAILEYS,
     timezone: raw.TZ,
     botName: raw.BOT_NAME,
     loginMode: raw.LOGIN_MODE,
