@@ -4,33 +4,24 @@ import { parseStickerText, wrapText } from './text.js';
 import { createCanvas } from '@napi-rs/canvas';
 
 describe('parseStickerText', () => {
-  it('uses the default position when there is no prefix', () => {
+  it('uses the default position when there is no pipe', () => {
     expect(parseStickerText('halo dunia', 'bottom', 140)).toEqual({ bottom: 'HALO DUNIA' });
     expect(parseStickerText('halo dunia', 'top', 140)).toEqual({ top: 'HALO DUNIA' });
   });
 
-  it('parses top and bottom zones', () => {
-    expect(parseStickerText('atas: satu | bawah: dua', 'bottom', 140)).toEqual({
-      top: 'SATU',
-      bottom: 'DUA',
+  it('puts right-of-pipe text on top', () => {
+    expect(parseStickerText('| halo', 'bottom', 140)).toEqual({ top: 'HALO' });
+  });
+
+  it('splits two zones: left = bottom, right = top', () => {
+    expect(parseStickerText('satu | dua', 'bottom', 140)).toEqual({
+      bottom: 'SATU',
+      top: 'DUA',
     });
   });
 
-  it('parses center text', () => {
-    expect(parseStickerText('tengah: halo', 'bottom', 140)).toEqual({ center: 'HALO' });
-  });
-
-  it('puts unprefixed parts in the default zone', () => {
-    expect(parseStickerText('atas: satu | dua', 'bottom', 140)).toEqual({
-      top: 'SATU',
-      bottom: 'DUA',
-    });
-  });
-
-  it('rejects center combined with another zone', () => {
-    expect(() => parseStickerText('tengah: satu | atas: dua', 'bottom', 140)).toThrow(
-      UserFacingError,
-    );
+  it('rejects top pipe text when the default position is center', () => {
+    expect(() => parseStickerText('satu | dua', 'center', 140)).toThrow(UserFacingError);
   });
 
   it('rejects text over the limit', () => {
@@ -39,6 +30,10 @@ describe('parseStickerText', () => {
 
   it('returns null for empty text', () => {
     expect(parseStickerText('   ', 'bottom', 140)).toBeNull();
+  });
+
+  it('returns null when both sides of the pipe are empty', () => {
+    expect(parseStickerText('|', 'bottom', 140)).toBeNull();
   });
 });
 

@@ -10,6 +10,7 @@ export interface TextZones {
 
 const CANVAS_SIZE = 512;
 const MARGIN = 28;
+const BOTTOM_MARGIN = 14;
 const MAX_WIDTH = 448;
 const MAX_LINES = 3;
 const MIN_FONT_SIZE = 22;
@@ -66,67 +67,32 @@ export function parseStickerText(
     throw new UserFacingError(`Teks stiker maksimal ${maxChars} karakter.`);
   }
 
-  const parts = cleaned
-    .split('|')
-    .map((part) => part.trim())
-    .filter(Boolean);
+  // Teks di kiri `|` jatuh ke posisi default (bawah), teks di kanan jatuh ke atas.
+  const separator = cleaned.indexOf('|');
+  const left = (separator === -1 ? cleaned : cleaned.slice(0, separator)).trim();
+  const right = separator === -1 ? '' : cleaned.slice(separator + 1).trim();
 
-  const zones: TextZones = {};
-  const unprefixed: string[] = [];
-  let structured = false;
-
-  for (const part of parts) {
-    const match = /^(atas|bawah|tengah)\s*:\s*(.*)$/iu.exec(part);
-
-    if (!match) {
-      unprefixed.push(part);
-      continue;
-    }
-
-    structured = true;
-    const key = match[1]?.toLowerCase();
-    const value = match[2]?.trim() ?? '';
-
-    if (!value) {
-      continue;
-    }
-
-    if (key === 'atas') {
-      zones.top = appendZone(zones.top, value);
-    } else if (key === 'bawah') {
-      zones.bottom = appendZone(zones.bottom, value);
-    } else if (key === 'tengah') {
-      zones.center = appendZone(zones.center, value);
-    }
-  }
-
-  if (!structured) {
-    zones[defaultPosition] = cleaned;
-  } else if (unprefixed.length > 0) {
-    zones[defaultPosition] = appendZone(zones[defaultPosition], unprefixed.join(' '));
-  }
-
-  if (zones.center && (zones.top || zones.bottom)) {
-    throw new UserFacingError('Posisi `tengah` tidak bisa digabung dengan `atas` atau `bawah`.');
-  }
-
-  const normalized: TextZones = {};
-
-  if (zones.top) {
-    normalized.top = normalizeZone(zones.top);
-  }
-  if (zones.bottom) {
-    normalized.bottom = normalizeZone(zones.bottom);
-  }
-  if (zones.center) {
-    normalized.center = normalizeZone(zones.center);
-  }
-
-  if (!normalized.top && !normalized.bottom && !normalized.center) {
+  if (!left && !right) {
     return null;
   }
 
-  return normalized;
+  const zones: TextZones = {};
+
+  if (left) {
+    zones[defaultPosition] = normalizeZone(left);
+  }
+
+  if (right) {
+    if (defaultPosition === 'center') {
+      throw new UserFacingError(
+        'Teks setelah `|` tidak bisa dipakai saat posisi default `tengah` aktif.',
+      );
+    }
+
+    zones.top = zones.top ? appendZone(zones.top, normalizeZone(right)) : normalizeZone(right);
+  }
+
+  return zones;
 }
 
 export function wrapText(
@@ -233,7 +199,7 @@ function drawZone(
     position === 'top'
       ? MARGIN
       : position === 'bottom'
-        ? CANVAS_SIZE - MARGIN - layout.height
+        ? CANVAS_SIZE - BOTTOM_MARGIN - layout.height
         : (CANVAS_SIZE - layout.height) / 2;
 
   ctx.textAlign = 'center';

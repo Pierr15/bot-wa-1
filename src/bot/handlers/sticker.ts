@@ -58,8 +58,8 @@ export class StickerHandler {
       chatJid,
       'Foto ini belum diproses. Reply foto dengan `.s` atau `.sticker` untuk menjadikannya stiker.\n\n' +
         '• `.s` — stiker polos\n' +
-        '• `.s KEREN` — stiker dengan teks\n' +
-        '• `.s atas: TEKS | bawah: TEKS` — teks dua zona',
+        '• `.s KEREN` — stiker dengan teks di bawah\n' +
+        '• `.s KEREN | HALO` — teks dua zona (kiri bawah, kanan atas)',
       message,
     );
   }
