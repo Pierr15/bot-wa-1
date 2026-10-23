@@ -9,6 +9,7 @@ const MAX_STICKER_BYTES = 100 * 1024;
 const MAX_INPUT_PIXELS = 40_000_000;
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const WEBP_QUALITIES = [82, 72, 62, 52, 42, 32, 24, 12];
+const TEXT_STICKER_QUALITIES = [90, 80, 70, 60, 50, 40, 30, 20];
 
 export interface CreateStickerOptions {
   input: Buffer;
@@ -23,6 +24,32 @@ export interface StickerResult {
   buffer: Buffer;
   bytes: number;
   quality: number;
+}
+
+export interface EncodeStickerOptions {
+  input: Buffer;
+  maxBytes?: number;
+  qualities?: number[];
+}
+
+/**
+ * Encode a finished PNG (flat render, no photo) into a 100 KB-class sticker
+ * WebP. Returns null when every quality step still exceeds maxBytes.
+ */
+export async function encodeStickerWebp({
+  input,
+  maxBytes = MAX_STICKER_BYTES,
+  qualities = TEXT_STICKER_QUALITIES,
+}: EncodeStickerOptions): Promise<{ buffer: Buffer; quality: number } | null> {
+  for (const quality of qualities) {
+    const buffer = await new Transformer(input).webp(quality);
+
+    if (buffer.length <= maxBytes) {
+      return { buffer, quality };
+    }
+  }
+
+  return null;
 }
 
 export async function createSticker({

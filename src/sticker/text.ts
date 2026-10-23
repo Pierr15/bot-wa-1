@@ -230,12 +230,21 @@ function drawZone(
   }
 }
 
-export async function renderTextLayer(zones: TextZones, fontPath: string): Promise<Buffer> {
+export async function renderTextLayer(
+  zones: TextZones,
+  fontPath: string,
+  backgroundColor: string | null = null,
+): Promise<Buffer> {
   const canvas = createCanvas(CANVAS_SIZE, CANVAS_SIZE);
   const ctx = canvas.getContext('2d');
   const family = ensureFont(fontPath);
 
   ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+  if (backgroundColor) {
+    ctx.fillStyle = backgroundColor;
+    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+  }
 
   const hasTop = Boolean(zones.top);
   const hasBottom = Boolean(zones.bottom);

@@ -1,7 +1,11 @@
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { UserFacingError } from '../core/errors.js';
-import { parseStickerText, wrapText } from './text.js';
+import { parseStickerText, renderTextLayer, wrapText } from './text.js';
+import { encodeStickerWebp } from './render.js';
 import { createCanvas } from '@napi-rs/canvas';
+
+const FONT_PATH = path.resolve('assets/fonts/Anton-Regular.ttf');
 
 describe('parseStickerText', () => {
   it('uses the default position when there is no pipe', () => {
@@ -44,5 +48,23 @@ describe('wrapText', () => {
     const lines = wrapText(ctx, 'SATU DUA TIGA EMPAT LIMA ENAM TUJUH', 200, 3);
     expect(lines.length).toBeLessThanOrEqual(3);
     expect(lines.every((line) => ctx.measureText(line).width <= 200)).toBe(true);
+  });
+});
+
+describe('renderTextLayer', () => {
+  it('renders a valid sticker-sized webp under 100 KB on white background', async () => {
+    const png = await renderTextLayer({ bottom: 'TEST TEKS' }, FONT_PATH, '#ffffff');
+    const encoded = await encodeStickerWebp({ input: png });
+
+    expect(encoded).not.toBeNull();
+    expect(encoded!.buffer.subarray(0, 4).toString('ascii')).toBe('RIFF');
+    expect(encoded!.buffer.subarray(8, 12).toString('ascii')).toBe('WEBP');
+    expect(encoded!.buffer.length).toBeLessThanOrEqual(100 * 1024);
+  });
+
+  it('renders two zones on a transparent background', async () => {
+    const png = await renderTextLayer({ top: 'ATAS', bottom: 'BAWAH' }, FONT_PATH);
+    const magic = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    expect([...png.subarray(0, 8)]).toEqual(magic);
   });
 });

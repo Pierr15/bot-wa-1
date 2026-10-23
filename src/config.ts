@@ -39,7 +39,9 @@ const envSchema = z.object({
 
   STICKER_DEFAULT_POSITION: z.enum(['top', 'bottom', 'center']).default('bottom'),
   STICKER_MAX_CHARS: number(140, 1, 500),
-  STICKER_FONT_PATH: z.string().default('assets/fonts/Anton-Regular.ttf'),
+  STICKER_FONT_PATH: z.string().min(1).default('assets/fonts/Anton-Regular.ttf'),
+  STICKER_ANIM_MAX_SEC: number(6, 1, 30),
+  STICKER_ANIM_MAX_KB: number(300, 20, 1_000),
   MAX_IMAGE_MB: number(10, 1, 50),
 
   DOWNLOAD_MAX_MB: number(16, 1, 100),
@@ -75,6 +77,8 @@ export interface AppConfig {
   sticker: {
     defaultPosition: StickerPosition;
     maxChars: number;
+    animMaxSeconds: number;
+    animMaxBytes: number;
   };
   maxImageBytes: number;
   download: {
@@ -159,6 +163,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     sticker: {
       defaultPosition: raw.STICKER_DEFAULT_POSITION,
       maxChars: raw.STICKER_MAX_CHARS,
+      animMaxSeconds: raw.STICKER_ANIM_MAX_SEC,
+      animMaxBytes: raw.STICKER_ANIM_MAX_KB * 1024,
     },
     maxImageBytes: raw.MAX_IMAGE_MB * 1024 * 1024,
     download: {

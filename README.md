@@ -3,10 +3,13 @@
 Bot privat untuk WhatsApp yang berjalan di Termux (Android). Fase 1 mendukung:
 
 - foto + caption `.s`/`.sticker` → stiker WebP 512×512 (≤100 KB), teks putih dengan outline hitam;
+- video/GIF + caption `.s` → stiker animasi WebP (maks 6 detik pertama, ≤300 KB, butuh ffmpeg dengan `libwebp_anim`);
 - teks default di bawah; teks di atas via `|` (kiri `|` = bawah/default, kanan `|` = atas);
-- foto tanpa command → tidak diproses, bot hanya mengirim hint cara membuat stiker;
+- `.t TEKS` → stiker teks di dasar putih, tanpa foto;
+- foto/media tanpa command → tidak diproses, bot hanya mengirim hint cara membuat stiker;
 - reply foto dengan `.s` untuk memproses foto yang sudah terkirim tanpa command;
-- download TikTok/Instagram tanpa watermark, termasuk foto dan carousel/slideshow.
+- download TikTok/Instagram tanpa watermark, termasuk foto dan carousel/slideshow;
+- reply hasil download dengan `.v` (video full-res), `.a` (audio), `.f [N]` (foto) untuk pilih media.
 
 ## Kebutuhan
 
@@ -58,10 +61,14 @@ Jika `OWNER_NUMBERS` dan `ALLOWED_NUMBERS` kosong, semua pesan diabaikan.
 Semua command memakai prefix `.` (titik).
 
 - `.s` / `.sticker` — buat stiker. Tanpa teks → stiker polos; dengan teks → stiker bertulisan
+- `.t` / `.teks` — stiker dari teks saja (dasar putih)
+- `.v` / `.a` / `.f` — pilih video / audio / foto dari media hasil download terakhir
 - `.menu` — menu bantuan
 - `.ping` — cek bot hidup
 - `.id` — lihat ID chat (owner)
-- `.help`, `.start` — alias `.menu`; `.stiker` — alias `.s`
+- `.stat` — uptime, memori, disk, statistik penggunaan (owner)
+- `.broadcast <teks>` / `.bc` — siarkan teks ke semua nomor terdaftar (owner)
+- `.help`, `.start` — alias `.menu`; `.stiker`, `.teks`, `.foto`, `.status` — alias masing-masing
 
 ### Stiker
 
@@ -70,8 +77,12 @@ Semua command memakai prefix `.` (titik).
   - `.s KEREN` — teks di bawah (posisi default);
   - `.s | KEREN` — teks di atas;
   - `.s TEKS BAWAH | TEKS ATAS` — dua zona (kiri `|` = bawah, kanan `|` = atas).
-- Foto yang dikirim tanpa caption `.s` **tidak** diproses; bot hanya membalas dengan hint.
-  Untuk memprosesnya, reply foto tersebut dengan `.s` (atau `.s` + teks).
+- Kirim video/GIF (maks 10 MB) dengan caption `.s` → stiker animasi dari 6 detik
+  pertama (`STICKER_ANIM_MAX_SEC`, `STICKER_ANIM_MAX_KB`). Butuh ffmpeg yang membawa
+  encoder `libwebp_anim`.
+- Media yang dikirim tanpa caption `.s` **tidak** diproses; bot hanya membalas dengan hint.
+  Untuk memprosesnya, reply media tersebut dengan `.s` (atau `.s` + teks).
+- `.t KEREN` / `.t | KEREN` — stiker teks di atas dasar putih, format dua zona sama.
 
 ## Downloader
 
@@ -85,6 +96,15 @@ Semua command memakai prefix `.` (titik).
   ingin link keluar ke pihak ketiga.
 - Instagram membutuhkan cookies untuk konten yang mengharuskan login. Export cookies
   dalam format Netscape ke path `IG_COOKIES_PATH`; jangan commit file tersebut.
+
+### Media pilihan (reply hasil download)
+
+- `.v` — kirim video full-res (tetap ikut aturan kompresi/dokumen yang ada);
+- `.a` — ekstrak audio ke AAC (`m4a`) via ffmpeg dari video hasil download;
+- `.f` — kirim semua foto carousel; `.f 3` — hanya foto ke-3.
+- Plan tersimpan 10 menit per chat. Kirim link dulu jika sudah "hangus".
+- Folder `data/tmp` dari hasil download tetap dipakai untuk pilihan dan dibersihkan
+  janitor seperti biasa.
 
 Cara export cookies Instagram:
 

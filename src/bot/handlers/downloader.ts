@@ -7,13 +7,16 @@ import type { AppConfig } from '../../config.js';
 import { DownloadError, UserFacingError, errorMessage } from '../../core/errors.js';
 import type { AppLogger } from '../../core/logger.js';
 import { RateLimiter } from '../../core/rate-limit.js';
+import { stats } from '../../core/stats.js';
 import { getFreeDiskBytes } from '../../core/storage.js';
 import type { DetectedLink } from '../../downloader/detect.js';
 import { Downloader, type DownloadBundle } from '../../downloader/downloader.js';
 import {
   compressVideo,
+  extractAudio,
   formatBytes,
   mimeTypeOf,
+  probeHasAudio,
   probeVideoInfo,
   type MediaFile,
 } from '../../downloader/media.js';
@@ -25,6 +28,15 @@ const RATE_LIMITS = {
 } as const;
 
 const SEND_DELAY_MS = 1_000;
+const CHOICE_TTL_MS = 10 * 60_000;
+
+type ChoiceKind = 'video' | 'audio' | 'image';
+
+interface DownloadPlan {
+  platform: DetectedLink['platform'];
+  files: MediaFile[];
+  expiresAt: number;
+}
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -36,6 +48,7 @@ export class DownloaderHandler {
   private readonly downloader: Downloader;
   private readonly queue: PQueue;
   private readonly rate = new RateLimiter();
+  private readonly plans = new Map<string, DownloadPlan>();
 
   constructor(
     private readonly config: AppConfig,
@@ -52,6 +65,7 @@ export class DownloaderHandler {
 
   stop(): void {
     this.queue.clear();
+    this.plans.clear();
     this.downloader.stop();
   }
 
@@ -109,6 +123,7 @@ export class DownloaderHandler {
 
     await this.react(message, chatJid, '⏳');
     let tempDir: string | null = null;
+    let keepTempDir = false;
 
     try {
       const workDir = await mkdtemp(path.join(this.config.paths.tmpDir, 'dl-'));
@@ -126,6 +141,16 @@ export class DownloaderHandler {
         );
       }
 
+      // Keep the folder alive for follow-up .v/.a/.f choices; the tmp janitor
+      // removes it together with everything older than 6 hours.
+      this.plans.set(chatJid, {
+        platform: link.platform,
+        files: bundle.files,
+        expiresAt: Date.now() + CHOICE_TTL_MS,
+      });
+      keepTempDir = sent > 0;
+
+      stats.record('download');
       await this.react(message, chatJid, '✅');
       this.logger.info(
         {
@@ -138,6 +163,7 @@ export class DownloaderHandler {
         'Download selesai',
       );
     } catch (error) {
+      stats.record('download_gagal');
       await this.react(message, chatJid, '❌');
       const userMessage =
         error instanceof DownloadError
@@ -152,13 +178,151 @@ export class DownloaderHandler {
       );
       await this.reply(chatJid, userMessage, message);
     } finally {
-      if (tempDir) {
+      if (tempDir && !keepTempDir) {
         await rm(tempDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 }).catch(
           (error: unknown) => {
             this.logger.warn({ err: error }, 'Gagal menghapus folder download');
           },
         );
       }
+    }
+  }
+
+  /** Follow-up chooser: .v (video), .a (audio), .f [N] (foto). */
+  async handleChoice(
+    message: WAMessage,
+    chatJid: string,
+    kind: ChoiceKind,
+    args = '',
+  ): Promise<void> {
+    const plan = this.plans.get(chatJid);
+
+    if (!plan || plan.expiresAt <= Date.now()) {
+      this.plans.delete(chatJid);
+      await this.reply(
+        chatJid,
+        'Tidak ada media tersimpan. Kirim link TikTok/Instagram dulu, lalu reply hasilnya dengan `.v`, `.a`, atau `.f`.',
+        message,
+      );
+      return;
+    }
+
+    const label = plan.platform === 'tiktok' ? 'TikTok' : 'Instagram';
+
+    try {
+      if (kind === 'video') {
+        const videos = plan.files.filter((file) => file.kind === 'video');
+
+        if (videos.length === 0) {
+          await this.reply(chatJid, `Download ${label} ini tidak punya video. Coba \`.f\`.`, message);
+          return;
+        }
+
+        await this.queue.add(() =>
+          this.sendBundle(message, chatJid, videos, plan.platform, path.dirname(videos[0]?.path ?? '')),
+        );
+      } else if (kind === 'audio') {
+        const video = plan.files.find((file) => file.kind === 'video');
+
+        if (!video) {
+          await this.reply(
+            chatJid,
+            `Download ${label} ini tidak punya video untuk diekstrak audionya.`,
+            message,
+          );
+          return;
+        }
+
+        const hasAudio = await this.queue.add(() =>
+          probeHasAudio(video.path, this.config.download.ffprobePath),
+        );
+
+        if (!hasAudio) {
+          await this.reply(chatJid, 'Video ini tidak punya trek audio.', message);
+          return;
+        }
+
+        const target = path.join(path.dirname(video.path), `audio-${Date.now()}.m4a`);
+        const audio = await this.queue.add(() =>
+          extractAudio({
+            inputPath: video.path,
+            outputPath: target,
+            ffmpegPath: this.config.download.ffmpegPath,
+          }),
+        );
+
+        if (!audio) {
+          throw new UserFacingError('Gagal mengekstrak audio. Coba lagi nanti.');
+        }
+
+        await this.queue.add(async () => {
+          const socket = this.connection.getSocket();
+          const success = await this.sendFile(
+            socket,
+            chatJid,
+            {
+              path: audio.path,
+              name: path.basename(audio.path),
+              extension: 'm4a',
+              kind: 'audio',
+              size: audio.size,
+            },
+            '🎵 audio',
+            message,
+            false,
+          );
+
+          if (!success) {
+            throw new UserFacingError('Gagal mengirim audio. Coba lagi nanti.');
+          }
+        });
+      } else {
+        const images = plan.files.filter((file) => file.kind === 'image');
+
+        if (images.length === 0) {
+          await this.reply(
+            chatJid,
+            `Download ${label} ini tidak punya foto. Coba \`.v\` atau \`.a\`.`,
+            message,
+          );
+          return;
+        }
+
+        const requested = args.trim();
+        let selected = images;
+
+        if (requested) {
+          const index = Number.parseInt(requested, 10);
+
+          if (!Number.isInteger(index) || index < 1 || index > images.length) {
+            await this.reply(
+              chatJid,
+              `Nomor foto harus 1-${images.length}. Contoh: \`.f 1\`.`,
+              message,
+            );
+            return;
+          }
+
+          selected = [images[index - 1]!];
+        }
+
+        await this.queue.add(() =>
+          this.sendBundle(message, chatJid, selected, plan.platform, path.dirname(images[0]?.path ?? '')),
+        );
+      }
+
+      plan.expiresAt = Date.now() + CHOICE_TTL_MS;
+    } catch (error) {
+      const userMessage =
+        error instanceof UserFacingError
+          ? error.message
+          : 'Gagal memproses pilihan. Coba lagi sebentar lagi.';
+
+      this.logger.error(
+        { err: error, error: errorMessage(error), kind, chat: chatJid.slice(chatJid.indexOf('@')) },
+        'Gagal memproses pilihan media',
+      );
+      await this.reply(chatJid, userMessage, message);
     }
   }
 

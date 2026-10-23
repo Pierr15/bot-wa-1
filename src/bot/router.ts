@@ -2,10 +2,12 @@ import type { WAMessage, WAMessageContent } from 'baileys';
 import type { AppConfig } from '../config.js';
 import type { AppLogger } from '../core/logger.js';
 import { errorMessage } from '../core/errors.js';
+import { stats } from '../core/stats.js';
 import { detectLinks } from '../downloader/detect.js';
 import { isBroadcastJid, isGroupJid, isNewsletterJid } from '../utils/phone.js';
 import { AccessControl } from './access.js';
 import type { BotConnection } from './connection.js';
+import { AdminHandler } from './handlers/admin.js';
 import { DownloaderHandler } from './handlers/downloader.js';
 import { buildMenu } from './handlers/menu.js';
 import { StickerHandler } from './handlers/sticker.js';
@@ -27,6 +29,7 @@ export class MessageRouter {
   private readonly access: AccessControl;
   private readonly sticker: StickerHandler;
   private readonly downloader: DownloaderHandler;
+  private readonly admin: AdminHandler;
 
   constructor(
     private readonly config: AppConfig,
@@ -36,6 +39,7 @@ export class MessageRouter {
     this.access = new AccessControl(config, logger);
     this.sticker = new StickerHandler(config, logger, connection);
     this.downloader = new DownloaderHandler(config, logger, connection);
+    this.admin = new AdminHandler(config, logger, connection);
   }
 
   async initialize(): Promise<void> {
@@ -91,8 +95,8 @@ export class MessageRouter {
 
     const text = getMessageText(content)?.trim() ?? '';
 
-    // A photo only becomes a sticker when its caption carries .s/.sticker.
-    if (content.imageMessage) {
+    // Media only becomes a sticker when the caption (or the reply to it) carries .s/.sticker.
+    if (content.imageMessage || content.videoMessage) {
       const caption = parseCommand(text);
 
       if (caption && STICKER_COMMANDS.has(caption.command)) {
@@ -132,7 +136,7 @@ export class MessageRouter {
       return;
     }
 
-    if (getQuotedMessage(content)?.imageMessage) {
+    if (getQuotedMessage(content)?.imageMessage || getQuotedMessage(content)?.videoMessage) {
       await this.sticker.sendHint(chatJid, message);
     }
   }
@@ -151,20 +155,46 @@ export class MessageRouter {
       case 's':
       case 'stiker':
       case 'sticker':
+        stats.record(`cmd_${command}`);
         await this.sticker.handleStickerCommand(message, chatJid, content, args);
+        return;
+
+      case 't':
+      case 'teks':
+        stats.record(`cmd_${command}`);
+        await this.sticker.handleTextCommand(message, chatJid, args);
+        return;
+
+      case 'v':
+        stats.record('cmd_v');
+        await this.downloader.handleChoice(message, chatJid, 'video');
+        return;
+
+      case 'a':
+        stats.record('cmd_a');
+        await this.downloader.handleChoice(message, chatJid, 'audio');
+        return;
+
+      case 'f':
+      case 'foto':
+        stats.record('cmd_f');
+        await this.downloader.handleChoice(message, chatJid, 'image', args);
         return;
 
       case 'menu':
       case 'help':
       case 'start':
-        await this.reply(chatJid, buildMenu(this.config), message);
+        stats.record(`cmd_${command}`);
+        await this.reply(chatJid, buildMenu(this.config, isOwner), message);
         return;
 
       case 'ping':
+        stats.record('cmd_ping');
         await this.reply(chatJid, `pong • ${Math.floor(process.uptime())}s`, message);
         return;
 
       case 'id':
+        stats.record('cmd_id');
         if (!isOwner) {
           await this.reply(chatJid, 'Perintah ini khusus owner.', message);
           return;
@@ -180,6 +210,28 @@ export class MessageRouter {
           ].join('\n'),
           message,
         );
+        return;
+
+      case 'stat':
+      case 'status':
+        stats.record('cmd_stat');
+        if (!isOwner) {
+          await this.reply(chatJid, 'Perintah ini khusus owner.', message);
+          return;
+        }
+
+        await this.reply(chatJid, await this.admin.stat(), message);
+        return;
+
+      case 'broadcast':
+      case 'bc':
+        stats.record('cmd_broadcast');
+        if (!isOwner) {
+          await this.reply(chatJid, 'Perintah ini khusus owner.', message);
+          return;
+        }
+
+        await this.admin.broadcast(message, chatJid, args);
         return;
 
       default:

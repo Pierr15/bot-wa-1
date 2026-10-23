@@ -242,3 +242,80 @@ export function formatBytes(bytes: number): string {
 
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
+
+/** Returns null when ffmpeg/ffprobe cannot be consulted. */
+export async function probeHasAudio(filePath: string, ffprobePath: string): Promise<boolean | null> {
+  try {
+    const result = await runProcess(
+      ffprobePath,
+      [
+        '-v',
+        'error',
+        '-select_streams',
+        'a',
+        '-show_entries',
+        'stream=codec_name',
+        '-of',
+        'json',
+        filePath,
+      ],
+      { timeoutMs: 15_000 },
+    );
+
+    if (result.code !== 0) {
+      return null;
+    }
+
+    const parsed = JSON.parse(result.stdout) as { streams?: Array<{ codec_name?: string }> };
+    return (parsed.streams?.length ?? 0) > 0;
+  } catch {
+    return null;
+  }
+}
+
+export interface ExtractAudioOptions {
+  inputPath: string;
+  outputPath: string;
+  ffmpegPath: string;
+}
+
+/** Extract/re-encode the audio track to AAC in an .m4a container. */
+export async function extractAudio({
+  inputPath,
+  outputPath,
+  ffmpegPath,
+}: ExtractAudioOptions): Promise<{ path: string; size: number } | null> {
+  try {
+    const result = await runProcess(
+      ffmpegPath,
+      [
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-y',
+        '-i',
+        inputPath,
+        '-map',
+        '0:a:0?',
+        '-vn',
+        '-c:a',
+        'aac',
+        '-b:a',
+        '128k',
+        '-movflags',
+        '+faststart',
+        outputPath,
+      ],
+      { timeoutMs: 300_000 },
+    );
+
+    if (result.code !== 0) {
+      return null;
+    }
+
+    const info = await stat(outputPath);
+    return info.size > 0 ? { path: outputPath, size: info.size } : null;
+  } catch {
+    return null;
+  }
+}
