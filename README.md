@@ -2,9 +2,10 @@
 
 Bot privat untuk WhatsApp yang berjalan di Termux (Android). Fase 1 mendukung:
 
-- foto + caption → stiker WebP 512×512 (≤100 KB), teks putih dengan outline hitam;
+- foto + caption `.s`/`.sticker` → stiker WebP 512×512 (≤100 KB), teks putih dengan outline hitam;
 - posisi teks `atas:`, `bawah:`, `tengah:`, dan dua zona `atas: A | bawah: B`;
-- foto tanpa caption → bot menunggu teks (5 menit), `/skip` untuk stiker polos;
+- foto tanpa command → tidak diproses, bot hanya mengirim hint cara membuat stiker;
+- reply foto dengan `.s` untuk memproses foto yang sudah terkirim tanpa command;
 - download TikTok/Instagram tanpa watermark, termasuk foto dan carousel/slideshow.
 
 ## Kebutuhan
@@ -54,11 +55,23 @@ Jika `OWNER_NUMBERS` dan `ALLOWED_NUMBERS` kosong, semua pesan diabaikan.
 
 ## Perintah
 
-- `/menu` — menu bantuan
-- `/ping` — cek bot hidup
-- `/skip` — buat stiker polos saat menunggu teks
-- `/batal` — batalkan stiker yang menunggu teks
-- `/id` — lihat ID chat (owner)
+Semua command memakai prefix `.` (titik).
+
+- `.s` / `.sticker` — buat stiker. Tanpa teks → stiker polos; dengan teks → stiker bertulisan
+- `.menu` — menu bantuan
+- `.ping` — cek bot hidup
+- `.id` — lihat ID chat (owner)
+- `.help`, `.start` — alias `.menu`; `.stiker` — alias `.s`
+
+### Stiker
+
+- Kirim foto dengan caption `.s` untuk membuat stiker polos.
+- Tambahkan teks setelah command untuk stiker bertulisan:
+  - `.s KEREN` — teks di posisi default (bawah);
+  - `.s atas: TEKS`, `.s bawah: TEKS`, `.s tengah: TEKS` — pilih posisi;
+  - `.s atas: A | bawah: B` — dua zona.
+- Foto yang dikirim tanpa caption `.s` **tidak** diproses; bot hanya membalas dengan hint.
+  Untuk memprosesnya, reply foto tersebut dengan `.s` (atau `.s` + teks).
 
 ## Downloader
 

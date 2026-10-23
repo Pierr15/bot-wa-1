@@ -61,9 +61,9 @@ describe('extractUrls', () => {
 
 describe('parseCommand', () => {
   it('parses commands and arguments', () => {
-    expect(parseCommand('/menu')).toEqual({ command: 'menu', args: '' });
-    expect(parseCommand('/stiker atas Halo')).toEqual({ command: 'stiker', args: 'atas Halo' });
-    expect(parseCommand('/PING')).toEqual({ command: 'ping', args: '' });
+    expect(parseCommand('.menu')).toEqual({ command: 'menu', args: '' });
+    expect(parseCommand('.sticker atas Halo')).toEqual({ command: 'sticker', args: 'atas Halo' });
+    expect(parseCommand('.PING')).toEqual({ command: 'ping', args: '' });
   });
 
   it('ignores normal text', () => {

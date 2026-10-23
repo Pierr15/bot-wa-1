@@ -96,7 +96,7 @@ export interface ParsedCommand {
   args: string;
 }
 
-export function parseCommand(text: string, prefix = '/'): ParsedCommand | null {
+export function parseCommand(text: string, prefix = '.'): ParsedCommand | null {
   const trimmed = text.trim();
   if (!trimmed.startsWith(prefix)) {
     return null;

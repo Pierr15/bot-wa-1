@@ -10,143 +10,14 @@ import { getQuotedMessage } from '../messages.js';
 
 type ImageMessage = NonNullable<WAMessageContent['imageMessage']>;
 
-interface PendingSticker {
-  image: ImageMessage;
-  message: WAMessage;
-  expiresAt: number;
-}
-
-const PENDING_TTL_MS = 5 * 60_000;
-
 export class StickerHandler {
-  private readonly pending = new Map<string, PendingSticker>();
   private readonly queue = new PQueue({ concurrency: 2 });
-  private readonly sweepTimer: NodeJS.Timeout;
 
   constructor(
     private readonly config: AppConfig,
     private readonly logger: AppLogger,
     private readonly connection: BotConnection,
-  ) {
-    this.sweepTimer = setInterval(() => this.sweepPending(), 60_000);
-    this.sweepTimer.unref();
-  }
-
-  async handleIncoming(
-    message: WAMessage,
-    chatJid: string,
-    content: WAMessageContent,
-    text: string,
-  ): Promise<void> {
-    const directImage = content.imageMessage ?? null;
-    const quotedImage = getQuotedMessage(content)?.imageMessage ?? null;
-    const image = directImage ?? quotedImage;
-
-    if (!image) {
-      return;
-    }
-
-    if (directImage) {
-      this.pending.delete(chatJid);
-      const caption = text.trim();
-
-      if (!caption) {
-        this.setPending(chatJid, image, message);
-        await this.reply(
-          chatJid,
-          'Foto diterima. Ketik teks stikernya sekarang.\n\n' +
-            '• Default: teks di bawah\n' +
-            '• Awali `atas:` atau `tengah:` untuk posisi lain\n' +
-            '• Ketik `/skip` untuk tanpa teks\n\n' +
-            'Berlaku 5 menit.',
-          message,
-        );
-        return;
-      }
-
-      if (caption.toLowerCase() === '/skip') {
-        await this.generate(message, chatJid, image, null);
-        return;
-      }
-
-      const zones = this.parseOrReply(caption, chatJid, message);
-
-      if (!zones) {
-        this.setPending(chatJid, image, message);
-        return;
-      }
-
-      await this.generate(message, chatJid, image, zones);
-      return;
-    }
-
-    // A text reply to an older image: use the text as the sticker text.
-    if (quotedImage) {
-      const replyText = text.trim();
-
-      if (!replyText) {
-        return;
-      }
-
-      if (replyText.toLowerCase() === '/skip') {
-        await this.generate(message, chatJid, quotedImage, null);
-        return;
-      }
-
-      const zones = this.parseOrReply(replyText, chatJid, message);
-
-      if (zones) {
-        await this.generate(message, chatJid, quotedImage, zones);
-      }
-    }
-  }
-
-  async handlePendingText(message: WAMessage, chatJid: string, text: string): Promise<boolean> {
-    const pending = this.pending.get(chatJid);
-
-    if (!pending) {
-      return false;
-    }
-
-    if (pending.expiresAt <= Date.now()) {
-      this.pending.delete(chatJid);
-      return false;
-    }
-
-    const trimmed = text.trim();
-
-    if (!trimmed) {
-      return true;
-    }
-
-    if (trimmed.toLowerCase() === '/batal') {
-      this.pending.delete(chatJid);
-      await this.reply(chatJid, 'Dibatalkan. Kirim foto lagi kalau mau membuat stiker.', message);
-      return true;
-    }
-
-    if (trimmed.toLowerCase() === '/skip') {
-      const sent = await this.generate(message, chatJid, pending.image, null);
-      if (sent) {
-        this.pending.delete(chatJid);
-      }
-      return true;
-    }
-
-    const zones = this.parseOrReply(trimmed, chatJid, message);
-
-    if (!zones) {
-      return true;
-    }
-
-    const sent = await this.generate(message, chatJid, pending.image, zones);
-
-    if (sent) {
-      this.pending.delete(chatJid);
-    }
-
-    return true;
-  }
+  ) {}
 
   async handleStickerCommand(
     message: WAMessage,
@@ -154,82 +25,46 @@ export class StickerHandler {
     content: WAMessageContent,
     args: string,
   ): Promise<void> {
-    const quotedImage = getQuotedMessage(content)?.imageMessage ?? null;
-    const pending = this.pending.get(chatJid);
-    const image = quotedImage ?? pending?.image ?? null;
+    const image =
+      content.imageMessage ?? getQuotedMessage(content)?.imageMessage ?? null;
 
     if (!image) {
       await this.reply(
         chatJid,
-        'Reply sebuah foto dengan `/stiker` untuk membuat stiker, atau kirim foto lalu ketik teksnya.',
+        'Kirim foto dengan caption `.s` untuk membuat stiker, atau reply foto Anda dengan `.s`.',
         message,
       );
       return;
     }
 
-    if (!args.trim()) {
-      if (pending && !quotedImage) {
-        this.setPending(chatJid, pending.image, pending.message);
-        await this.reply(chatJid, 'Ketik teks stikernya, atau `/skip` untuk tanpa teks.', message);
-        return;
-      }
+    const trimmed = args.trim();
 
-      const sent = await this.generate(message, chatJid, image, null);
-      if (sent) {
-        this.pending.delete(chatJid);
-      }
+    if (!trimmed) {
+      await this.generate(message, chatJid, image, null);
       return;
     }
 
-    const zones = this.parseOrReply(args, chatJid, message);
+    const zones = this.parseOrReply(trimmed, chatJid, message);
 
     if (!zones) {
       return;
     }
 
-    const sent = await this.generate(message, chatJid, image, zones);
-
-    if (sent) {
-      this.pending.delete(chatJid);
-    }
+    await this.generate(message, chatJid, image, zones);
   }
 
-  async skip(chatJid: string, message: WAMessage): Promise<void> {
-    const pending = this.pending.get(chatJid);
-
-    if (!pending || pending.expiresAt <= Date.now()) {
-      this.pending.delete(chatJid);
-      await this.reply(
-        chatJid,
-        'Tidak ada foto yang menunggu teks. Kirim foto dulu, lalu ketik teksnya.',
-        message,
-      );
-      return;
-    }
-
-    const sent = await this.generate(message, chatJid, pending.image, null);
-
-    if (sent) {
-      this.pending.delete(chatJid);
-    }
-  }
-
-  async cancel(chatJid: string, message: WAMessage): Promise<void> {
-    if (!this.pending.has(chatJid)) {
-      await this.reply(chatJid, 'Tidak ada stiker yang sedang menunggu teks.', message);
-      return;
-    }
-
-    this.pending.delete(chatJid);
-    await this.reply(chatJid, 'Dibatalkan. Kirim foto lagi kalau mau membuat stiker.', message);
-  }
-
-  clearPending(chatJid: string): void {
-    this.pending.delete(chatJid);
+  async sendHint(chatJid: string, message: WAMessage): Promise<void> {
+    await this.reply(
+      chatJid,
+      'Foto ini belum diproses. Reply foto dengan `.s` atau `.sticker` untuk menjadikannya stiker.\n\n' +
+        '• `.s` — stiker polos\n' +
+        '• `.s KEREN` — stiker dengan teks\n' +
+        '• `.s atas: TEKS | bawah: TEKS` — teks dua zona',
+      message,
+    );
   }
 
   stop(): void {
-    clearInterval(this.sweepTimer);
     this.queue.clear();
   }
 
@@ -334,24 +169,6 @@ export class StickerHandler {
     }
 
     return Buffer.concat(chunks);
-  }
-
-  private setPending(chatJid: string, image: ImageMessage, message: WAMessage): void {
-    this.pending.set(chatJid, {
-      image,
-      message,
-      expiresAt: Date.now() + PENDING_TTL_MS,
-    });
-  }
-
-  private sweepPending(): void {
-    const now = Date.now();
-
-    for (const [chatJid, pending] of this.pending) {
-      if (pending.expiresAt <= now) {
-        this.pending.delete(chatJid);
-      }
-    }
   }
 
   private async react(message: WAMessage, chatJid: string, text: string): Promise<void> {

@@ -21,6 +21,8 @@ function maskJid(jid: string): string {
   return `${masked}@${server}`;
 }
 
+const STICKER_COMMANDS = new Set(['s', 'stiker', 'sticker']);
+
 export class MessageRouter {
   private readonly access: AccessControl;
   private readonly sticker: StickerHandler;
@@ -89,9 +91,15 @@ export class MessageRouter {
 
     const text = getMessageText(content)?.trim() ?? '';
 
-    // A direct image is always sticker input, even if its caption looks like a command.
+    // A photo only becomes a sticker when its caption carries .s/.sticker.
     if (content.imageMessage) {
-      await this.sticker.handleIncoming(message, chatJid, content, text);
+      const caption = parseCommand(text);
+
+      if (caption && STICKER_COMMANDS.has(caption.command)) {
+        await this.sticker.handleStickerCommand(message, chatJid, content, caption.args);
+      } else {
+        await this.sticker.sendHint(chatJid, message);
+      }
       return;
     }
 
@@ -112,9 +120,7 @@ export class MessageRouter {
     const links = detectLinks(text);
 
     if (links.length > 0) {
-      this.sticker.clearPending(chatJid);
-
-      // Downloading can take a minute; do not block stickers or commands behind it.
+      // Downloading can take a minute; do not block commands behind it.
       void this.downloader
         .handle(message, chatJid, links, access.senderPhones[0] ?? chatJid, access.isOwner)
         .catch((error: unknown) => {
@@ -126,12 +132,8 @@ export class MessageRouter {
       return;
     }
 
-    if (await this.sticker.handlePendingText(message, chatJid, text)) {
-      return;
-    }
-
     if (getQuotedMessage(content)?.imageMessage) {
-      await this.sticker.handleIncoming(message, chatJid, content, text);
+      await this.sticker.sendHint(chatJid, message);
     }
   }
 
@@ -146,18 +148,10 @@ export class MessageRouter {
     this.logger.debug({ command, chat: maskJid(chatJid) }, 'Command diterima');
 
     switch (command) {
+      case 's':
       case 'stiker':
       case 'sticker':
         await this.sticker.handleStickerCommand(message, chatJid, content, args);
-        return;
-
-      case 'skip':
-        await this.sticker.skip(chatJid, message);
-        return;
-
-      case 'batal':
-      case 'cancel':
-        await this.sticker.cancel(chatJid, message);
         return;
 
       case 'menu':
@@ -191,7 +185,7 @@ export class MessageRouter {
       default:
         await this.reply(
           chatJid,
-          `Perintah \`/${command}\` tidak dikenal. Ketik /menu untuk melihat daftar fitur.`,
+          `Perintah \`.${command}\` tidak dikenal. Ketik .menu untuk melihat daftar fitur.`,
           message,
         );
         return;
