@@ -49,7 +49,15 @@ export class BotConnection {
     }
 
     this.running = true;
-    await this.connect();
+
+    try {
+      await this.connect();
+    } catch (error) {
+      // Keep the process alive under runit when initial setup fails temporarily
+      // (for example, a transient DNS/network failure fetching Baileys version).
+      this.logger.error({ err: error }, 'Gagal memulai koneksi WhatsApp');
+      this.scheduleReconnect();
+    }
   }
 
   async stop(): Promise<void> {
